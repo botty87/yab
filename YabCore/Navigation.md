@@ -1,7 +1,6 @@
 # Navigation wire additions
 
-This supplements wire v1. The default app engine is Chromium (Auto) when the
-app bundles Yab's own Chromium on Apple silicon, and WebKit otherwise. These
+This supplements wire v1. The default app engine remains WebKit. These
 methods are implemented by `src/navigation.inc`, included by the private
 core dispatcher. No CEF object crosses the socket.
 

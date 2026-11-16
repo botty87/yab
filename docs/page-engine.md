@@ -5,7 +5,7 @@ an engine's AppKit view. It imports AppKit, not WebKit. `WebKitPage.swift`
 adapts `PageView` to it without changing the WebKit calls underneath.
 
 This is an incremental migration. Tab owns a lazily created `any PageHandle`,
-selected through `PageEngineFactory`. The standard factory follows the default engine: Chromium (Auto) when the app bundles Yab's own Chromium on Apple silicon, WebKit otherwise. A dev app launched with
+selected through `PageEngineFactory`. The standard factory defaults to WebKit. A dev app launched with
 `YAB_ENGINE=chromium` installs the experimental `ChromiumPage` adapter; see
 [`chromium-tabs.md`](chromium-tabs.md).
 Production `Tab.web` has been removed; its trapping compatibility accessor
@@ -48,7 +48,7 @@ new page has a committed entry. This preserves the current entry; transferring
 an entire native back/forward stack across engines remains future work.
 No WebKit interaction-state object is sent to another engine. Switching
 itself does not write a history visit. The new request uses the usual engine
-navigation events. Chromium is available when the app bundles Yab's own Chromium (Apple silicon only), or with that explicit development switch.
+navigation events. Chromium is available only with that explicit development switch.
 
 The Tab independently listens to `PageStateEvents`, alongside its window's
 `PageEvents` navigation listener. `PageStateChange` copies title, URL, loading,

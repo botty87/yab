@@ -1,8 +1,7 @@
 # Chromium development tabs
 
 This is an opt-in development integration, not a release or production engine
-migration. Without Yab's own Chromium in the bundle, WebKit remains the
-default. Set `YAB_ENGINE=chromium` on a dev
+migration. WebKit remains the default. Set `YAB_ENGINE=chromium` on a dev
 bundle (or an isolated `YAB_PROBE` world) before launch. The switch is read
 when a Tab is made; restart the app after changing it. Exact-host engine
 overrides are applied before page construction and can switch a live tab through
