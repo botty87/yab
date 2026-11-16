@@ -249,8 +249,8 @@ state/caret, accessibility and native menu interaction are not claimed.
   compatibility surface in the helper and ChromiumPage hosting adapter. There is no GPU restart,
   Retina, hundreds-of-tabs or signed password-manager acceptance here.
 - The app's development adapter is `Sources/Fast/ChromiumPage.swift`.
-  It is registered only with the explicit dev switch; see
-  [`docs/chromium-tabs.md`](../docs/chromium-tabs.md). Production remains WebKit.
+  It is registered when the app bundles YabCore and CEF, or with the explicit
+  dev switch; see [`docs/chromium-tabs.md`](../docs/chromium-tabs.md).
 
 ## Integration with the page seam
 
