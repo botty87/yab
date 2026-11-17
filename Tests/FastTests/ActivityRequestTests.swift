@@ -70,4 +70,40 @@ final class ActivityRequestTests: XCTestCase {
                                   resolvingAgainstBaseURL: false)
         XCTAssertEqual(check?.queryItems?.map(\.name), ["b", "os", "fail"])
     }
+
+    // MARK: docs/privacy.md
+
+    /// One row of "What Yab sends" in docs/privacy.md, found by its first cell.
+    private func privacyRow(_ request: String) throws -> String {
+        let page = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("docs/privacy.md")
+        let text = try String(contentsOf: page, encoding: .utf8)
+        return try XCTUnwrap(text.split(separator: "\n").first { $0.hasPrefix("| \(request)") }.map(String.init),
+                             "docs/privacy.md has no row for \(request)")
+    }
+
+    /// The page says each request "holds what is listed here and nothing
+    /// more". Every query item the update check can carry is named in its row,
+    /// as `name` or `name=value`, so a new item fails here until the page says it.
+    func testPrivacyPageNamesEveryItemOfTheUpdateCheck() throws {
+        let row = try privacyRow("Update check")
+        let check = Updater.checkURL(feed: site.appendingPathComponent("appcast.json"), build: 7, system: "26.0",
+                                     failure: "download", again: true, nightly: true, arch: "arm64")
+        let names = try XCTUnwrap(URLComponents(url: check, resolvingAgainstBaseURL: false)?.queryItems).map(\.name)
+        XCTAssertEqual(Set(names), ["b", "os", "arch", "fail", "again", "channel"])
+        for name in names {
+            XCTAssertTrue(row.contains("`\(name)`") || row.contains("`\(name)="),
+                          "docs/privacy.md, Update check, doesn't name `\(name)`")
+        }
+    }
+
+    /// The same for the day's count: every key of its body is in its row.
+    func testPrivacyPageNamesEveryKeyOfTheDaysCount() throws {
+        let row = try privacyRow("Daily count")
+        let request = Activity.dayRequest(site: site, id: id, person: "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", nightly: true)
+        for key in try body(request).keys {
+            XCTAssertTrue(row.contains("\"\(key)\""), "docs/privacy.md, Daily count, doesn't name \"\(key)\"")
+        }
+    }
 }
