@@ -6,10 +6,10 @@ import Foundation
 enum AgentArchive {
     /// Desktop discovers CLI transcripts by their first entrypoint, and
     /// takes one marked claude-desktop for its own. A caller can set that
-    /// origin, so background work names Yab again here, as every Claude
+    /// origin, so every Claude run names Yab again here, as every Claude
     /// account does (PlanAccounts.entrypoint), whatever it was handed.
-    static func environment(cli: String, background: Bool, base: [String: String]) -> [String: String] {
-        guard cli == "claude", background else { return base }
+    static func environment(cli: String, base: [String: String]) -> [String: String] {
+        guard cli == "claude" else { return base }
         var env = base
         env["CLAUDE_CODE_ENTRYPOINT"] = PlanAccounts.entrypoint
         return env

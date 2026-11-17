@@ -3,17 +3,15 @@ import Testing
 @testable import Fast
 
 struct AgentArchiveTests {
-    @Test func backgroundClaudeOriginCannotLeakFromItsCaller() {
+    @Test func claudeOriginCannotLeakFromItsCaller() {
         let base = ["CLAUDE_CODE_ENTRYPOINT": "claude-desktop", "CLAUDE_CONFIG_DIR": "/test/account",
                     "CLAUDE_SECURESTORAGE_CONFIG_DIR": "", "HOME": "/test/user", "PATH": "/test/bin"]
-        let background = AgentArchive.environment(cli: "claude", background: true, base: base)
         var expected = base
         expected["CLAUDE_CODE_ENTRYPOINT"] = "yab"
-        #expect(background == expected)
-        #expect(AgentArchive.environment(cli: "claude", background: false, base: base) == base)
-        #expect(AgentArchive.environment(cli: "codex", background: true, base: base) == base)
-        #expect(AgentArchive.environment(cli: "external", background: true, base: base) == base)
-        #expect(AgentArchive.environment(cli: "claude", background: true, base: [:]) == ["CLAUDE_CODE_ENTRYPOINT": "yab"])
+        #expect(AgentArchive.environment(cli: "claude", base: base) == expected)
+        #expect(AgentArchive.environment(cli: "codex", base: base) == base)
+        #expect(AgentArchive.environment(cli: "external", base: base) == base)
+        #expect(AgentArchive.environment(cli: "claude", base: [:]) == ["CLAUDE_CODE_ENTRYPOINT": "yab"])
     }
 
     /// A chat and background work both run as yab, the account's client
@@ -22,8 +20,8 @@ struct AgentArchiveTests {
         for origin in ["claude-desktop", "cli"] {
             let account = PlanAccounts.environment(PlanAccount(id: "claude", cli: "claude"),
                                                    base: ["CLAUDE_CODE_ENTRYPOINT": origin, "PATH": "/test/bin"], secret: nil)
-            #expect(AgentArchive.environment(cli: "claude", background: false, base: account)["CLAUDE_CODE_ENTRYPOINT"] == "yab")
-            #expect(AgentArchive.environment(cli: "claude", background: true, base: account)["CLAUDE_CODE_ENTRYPOINT"] == "yab")
+            #expect(account["CLAUDE_CODE_ENTRYPOINT"] == "yab")
+            #expect(AgentArchive.environment(cli: "claude", base: account)["CLAUDE_CODE_ENTRYPOINT"] == "yab")
         }
     }
 

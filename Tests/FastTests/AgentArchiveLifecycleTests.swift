@@ -264,7 +264,7 @@ struct AgentArchiveLifecycleTests {
         }
     }
 
-    @Test func backgroundClaudeKeepsItsSDKOriginAndHistoryAcrossArchiveAndResume() async throws {
+    @Test func backgroundClaudeKeepsItsOriginAndHistoryAcrossArchiveAndResume() async throws {
         try #require(Store.testing)
         let world = try claudeWorld()
         let agents = Agents()
@@ -373,8 +373,9 @@ struct AgentArchiveLifecycleTests {
         }
         try #require(ordinaryFinished)
         #expect(ordinary.archiveTask == nil)
-        #expect(ordinary.providerEnvironment == AgentCopies.environment(for: world.binary.path, base: ordinary.env))
-        #expect((world.messages().last { $0["event"] as? String == "launch" }?["env"] as? [String: String])?["CLAUDE_CODE_ENTRYPOINT"] == "claude-desktop")
+        #expect(ordinary.providerEnvironment == AgentCopies.environment(for: world.binary.path,
+                                                                          base: ordinary.env.merging(["CLAUDE_CODE_ENTRYPOINT": "yab"]) { $1 }))
+        #expect((world.messages().last { $0["event"] as? String == "launch" }?["env"] as? [String: String])?["CLAUDE_CODE_ENTRYPOINT"] == "yab")
         #expect(try Data(contentsOf: settings) == settingsData)
         #expect(try Data(contentsOf: token) == tokenData)
         #expect(!child.events.contains("Failed"))

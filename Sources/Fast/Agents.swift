@@ -1919,7 +1919,7 @@ final class Agents: ObservableObject {
         let binary = session.agent == .codex && !session.full ? Agents.real(session.binary) : session.binary
         // Probe worlds keep Codex's conversations too: a fresh test world
         // must never add its project to the person's Codex history.
-        var env = AgentArchive.environment(cli: session.cli, background: Self.archivesAfterAnswer(session), base: session.env)
+        var env = AgentArchive.environment(cli: session.cli, base: session.env)
         // Claude Code starts its first turn before Yab's server has said its
         // tools unless told to wait: a `name` or `mail_recall` called at once
         // came back "No such tool available", and the chat kept a made-up name.
