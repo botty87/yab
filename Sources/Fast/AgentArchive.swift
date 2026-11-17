@@ -4,13 +4,14 @@ import Foundation
 /// created. Call only after its answer has been delivered and its process
 /// has exited; this never discovers or archives unrelated conversations.
 enum AgentArchive {
-    /// Desktop discovers CLI transcripts by their first entrypoint. A print
-    /// run normally records sdk-cli, but inherits a Desktop/IDE origin if
-    /// its caller set one. Background work must retain its actual SDK origin.
+    /// Desktop discovers CLI transcripts by their first entrypoint, and
+    /// takes one marked claude-desktop for its own. A caller can set that
+    /// origin, so background work names Yab again here, as every Claude
+    /// account does (PlanAccounts.entrypoint), whatever it was handed.
     static func environment(cli: String, background: Bool, base: [String: String]) -> [String: String] {
         guard cli == "claude", background else { return base }
         var env = base
-        env["CLAUDE_CODE_ENTRYPOINT"] = "sdk-cli"
+        env["CLAUDE_CODE_ENTRYPOINT"] = PlanAccounts.entrypoint
         return env
     }
 

@@ -8,12 +8,23 @@ struct AgentArchiveTests {
                     "CLAUDE_SECURESTORAGE_CONFIG_DIR": "", "HOME": "/test/user", "PATH": "/test/bin"]
         let background = AgentArchive.environment(cli: "claude", background: true, base: base)
         var expected = base
-        expected["CLAUDE_CODE_ENTRYPOINT"] = "sdk-cli"
+        expected["CLAUDE_CODE_ENTRYPOINT"] = "yab"
         #expect(background == expected)
         #expect(AgentArchive.environment(cli: "claude", background: false, base: base) == base)
         #expect(AgentArchive.environment(cli: "codex", background: true, base: base) == base)
         #expect(AgentArchive.environment(cli: "external", background: true, base: base) == base)
-        #expect(AgentArchive.environment(cli: "claude", background: true, base: [:]) == ["CLAUDE_CODE_ENTRYPOINT": "sdk-cli"])
+        #expect(AgentArchive.environment(cli: "claude", background: true, base: [:]) == ["CLAUDE_CODE_ENTRYPOINT": "yab"])
+    }
+
+    /// A chat and background work both run as yab, the account's client
+    /// name, even when Yab was opened with Claude Desktop's origin.
+    @MainActor @Test func everyClaudeRunNamesYabOverAnInheritedOrigin() {
+        for origin in ["claude-desktop", "cli"] {
+            let account = PlanAccounts.environment(PlanAccount(id: "claude", cli: "claude"),
+                                                   base: ["CLAUDE_CODE_ENTRYPOINT": origin, "PATH": "/test/bin"], secret: nil)
+            #expect(AgentArchive.environment(cli: "claude", background: false, base: account)["CLAUDE_CODE_ENTRYPOINT"] == "yab")
+            #expect(AgentArchive.environment(cli: "claude", background: true, base: account)["CLAUDE_CODE_ENTRYPOINT"] == "yab")
+        }
     }
 
     private static func world() throws -> URL {

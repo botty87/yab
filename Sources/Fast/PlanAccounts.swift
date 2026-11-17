@@ -252,6 +252,9 @@ final class PlanAccounts: ObservableObject {
         return env
     }
 
+    /// What every Claude Code process Yab starts names as its client.
+    nonisolated static let entrypoint = "yab"
+
     /// The one rule for an account's environment, for the task that runs
     /// on it (env) and for a look at whether it is signed in (read): its
     /// own folder, and your token and key for the usual account only.
@@ -261,6 +264,12 @@ final class PlanAccounts: ObservableObject {
                             secret: ((String) -> String?)?) -> [String: String] {
         if account.cli == "cursor" { return CursorRunner.environment(base) }
         var env = base
+        if account.cli == "claude" {
+            // Claude Code names its client on every request and in each
+            // transcript. Under -p it would say sdk-cli, which a plan's
+            // limits count apart from the terminal (anthropics/claude-code#97074).
+            env["CLAUDE_CODE_ENTRYPOINT"] = entrypoint
+        }
         if account.cli == "claude", !account.usual {
             env[Shell.claudeToken] = nil
             env[AgentKey.anthropic] = account.keyed ? secret?(account.id) : nil
