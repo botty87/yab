@@ -1,9 +1,10 @@
 import XCTest
 @testable import Fast
 
-/// What leaves the Mac for the site, field by field, as README says: the
-/// day's count holds the two IDs and the update channel alone, the kept boosts their
-/// Store ids alone, the update check its build, macOS and a failure once,
+/// What leaves the Mac for the site, field by field, as docs/privacy.md says:
+/// the day's count holds the two IDs and the update channel alone, the kept
+/// boosts their Store ids alone, the update check its build, macOS, the running
+/// slice, the channel and whether it is the day's first, plus a failure once,
 /// the hang counts their buckets.
 @MainActor
 final class ActivityRequestTests: XCTestCase {
@@ -84,8 +85,9 @@ final class ActivityRequestTests: XCTestCase {
     }
 
     /// The page says each request "holds what is listed here and nothing
-    /// more". Every query item the update check can carry is named in its row,
-    /// as `name` or `name=value`, so a new item fails here until the page says it.
+    /// more". Every query item the update check sends with all of today's
+    /// options on is named in its row, as `name` or `name=value`, so a new item
+    /// fails here until the page says it. A new option needs a line here too.
     func testPrivacyPageNamesEveryItemOfTheUpdateCheck() throws {
         let row = try privacyRow("Update check")
         let check = Updater.checkURL(feed: site.appendingPathComponent("appcast.json"), build: 7, system: "26.0",
@@ -98,12 +100,16 @@ final class ActivityRequestTests: XCTestCase {
         }
     }
 
-    /// The same for the day's count: every key of its body is in its row.
+    /// The same for the day's count: every key of the Mac's body is in the
+    /// row's first `{…}`, the Mac's, not in the iPhone's sentence after it.
     func testPrivacyPageNamesEveryKeyOfTheDaysCount() throws {
         let row = try privacyRow("Daily count")
+        let open = try XCTUnwrap(row.range(of: "`{"), "docs/privacy.md, Daily count, has no `{…}` body")
+        let close = try XCTUnwrap(row.range(of: "}`", range: open.upperBound..<row.endIndex))
+        let mac = row[open.upperBound..<close.lowerBound]
         let request = Activity.dayRequest(site: site, id: id, person: "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", nightly: true)
         for key in try body(request).keys {
-            XCTAssertTrue(row.contains("\"\(key)\""), "docs/privacy.md, Daily count, doesn't name \"\(key)\"")
+            XCTAssertTrue(mac.contains("\"\(key)\""), "docs/privacy.md, Daily count, doesn't name \"\(key)\" in the Mac's body")
         }
     }
 }
