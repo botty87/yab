@@ -42,6 +42,21 @@ struct AgentLaunch: Equatable {
 
     /// The account's own config folder; nil for the CLI's usual one.
     var configDir: String? { env[cli == "codex" ? "CODEX_HOME" : "CLAUDE_CONFIG_DIR"] }
+
+    /// What Claude Code is told its client is, on each request and in each
+    /// transcript. Unset, a -p run says sdk-cli, which a plan's limits
+    /// count apart from the terminal (anthropics/claude-code#97074).
+    static let entrypoint = "yab"
+
+    /// The environment a Claude Code process starts in names Yab, over
+    /// whatever was handed down: Claude Desktop takes a transcript marked
+    /// claude-desktop for its own. Other CLIs are left as they are.
+    static func named(_ cli: String, _ env: [String: String]) -> [String: String] {
+        guard cli == "claude" else { return env }
+        var env = env
+        env["CLAUDE_CODE_ENTRYPOINT"] = entrypoint
+        return env
+    }
 }
 
 @MainActor
@@ -90,7 +105,7 @@ extension AgentLaunch {
         guard let binary = binary(cli, in: found) else { return nil }
         let account = account(cli, plans: plans, skipping: [])
         return AgentLaunch(cli: cli, binary: binary, account: account,
-                           env: account.map { PlanAccounts.environment($0, base: found.env, secret: nil) } ?? found.env)
+                           env: named(cli, account.map { PlanAccounts.environment($0, base: found.env, secret: nil) } ?? found.env))
     }
 
     /// The account a task starts on; Gemini has none of Yab's (its sign-in
@@ -124,13 +139,13 @@ extension AgentLaunch {
     /// with room).
     static func on(_ account: PlanAccount?, cli: String, binary: String, in found: Shell.Found,
                    plans: PlanAccounts = .shared) -> AgentLaunch {
-        AgentLaunch(cli: cli, binary: binary, account: account, env: plans.env(account, base: found.env))
+        AgentLaunch(cli: cli, binary: binary, account: account, env: named(cli, plans.env(account, base: found.env)))
     }
 
     /// The environment a look reads an account's sign-in in: the one its
     /// task runs in, without a keyed account's secret (a look never loads
     /// one; whether it is kept says, AgentKey.hasSecret).
     static func lookEnvironment(_ account: PlanAccount, in found: Shell.Found) -> [String: String] {
-        PlanAccounts.environment(account, base: found.env, secret: nil)
+        named(account.cli, PlanAccounts.environment(account, base: found.env, secret: nil))
     }
 }

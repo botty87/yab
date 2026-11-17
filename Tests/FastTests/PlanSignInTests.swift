@@ -108,7 +108,7 @@ struct PlanSignInTests {
         let accounts = PlanAccounts(settings: settings)
         let first = accounts.prepareSignIn("claude", replacing: "claude")
         #expect(first.id == "claude" && first.home == nil)
-        #expect(accounts.env(first, base: ["PATH": "/test/bin"]) == ["PATH": "/test/bin", "CLAUDE_CODE_ENTRYPOINT": "yab"])
+        #expect(accounts.env(first, base: ["PATH": "/test/bin"]) == ["PATH": "/test/bin"])
         let fresh = PlanAccount(id: "codex.login", cli: "codex", home: "/test/codex", email: "me@example.com")
         let accepted = accounts.acceptSignIn(fresh, replacing: "codex")
         #expect(accepted.id == "codex")
@@ -343,36 +343,13 @@ struct PlanSignInTests {
         let accounts = PlanAccounts(settings: settings)
         let base = ["PATH": "/test/bin", Shell.claudeToken: "sk-ant-oat01-stand-in"]
         let usual = PlanAccount(id: "claude", cli: "claude")
-        #expect(accounts.env(usual, base: base) == base.merging(["CLAUDE_CODE_ENTRYPOINT": "yab"]) { $1 })
+        #expect(accounts.env(usual, base: base) == base)
         #expect(accounts.env(nil, base: base) == base)
         let renewed = PlanAccount(id: "claude", cli: "claude", home: "/test/renewed")
         #expect(accounts.env(renewed, base: base)[Shell.claudeToken] == "sk-ant-oat01-stand-in")
         let other = PlanAccount(id: "claude.other", cli: "claude", home: "/test/other")
-        #expect(accounts.env(other, base: base) == ["PATH": "/test/bin", "CLAUDE_CONFIG_DIR": "/test/other", "CLAUDE_CODE_ENTRYPOINT": "yab"])
+        #expect(accounts.env(other, base: base) == ["PATH": "/test/bin", "CLAUDE_CONFIG_DIR": "/test/other"])
         #expect((await PlanAccounts.read("claude", env: accounts.env(usual, base: base))).signedIn)
-    }
-
-    /// Every Claude Code process Yab starts names Yab as its client, over
-    /// whatever origin the app was opened with. Other CLIs are left alone.
-    @Test func everyClaudeAccountRunsAsYab() {
-        let (settings, name) = settings()
-        defer { settings.removePersistentDomain(forName: name) }
-        let accounts = PlanAccounts(settings: settings)
-        let claude = [PlanAccount(id: "claude", cli: "claude"),
-                      PlanAccount(id: "claude.other", cli: "claude", home: "/test/other"),
-                      PlanAccount(id: "claude.key", cli: "claude", tail: "abcd")]
-        for origin in ["claude-desktop", "cli", "sdk-cli"] {
-            let base = ["PATH": "/test/bin", "CLAUDE_CODE_ENTRYPOINT": origin]
-            for account in claude {
-                #expect(accounts.env(account, base: base)["CLAUDE_CODE_ENTRYPOINT"] == "yab")
-                #expect(PlanAccounts.environment(account, base: base, secret: nil)["CLAUDE_CODE_ENTRYPOINT"] == "yab")
-            }
-            let codex = PlanAccount(id: "codex.other", cli: "codex", home: "/test/codex")
-            #expect(accounts.env(codex, base: base) == base.merging(["CODEX_HOME": "/test/codex"]) { $1 })
-            let cursor = PlanAccount(id: "cursor", cli: "cursor")
-            #expect(accounts.env(cursor, base: base) == CursorRunner.environment(base))
-        }
-        #expect(accounts.env(PlanAccount(id: "claude", cli: "claude"), base: [:]) == ["CLAUDE_CODE_ENTRYPOINT": "yab"])
     }
 
     /// The login shell says the token after everything else; only a line

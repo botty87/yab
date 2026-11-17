@@ -264,7 +264,7 @@ struct AgentArchiveLifecycleTests {
         }
     }
 
-    @Test func backgroundClaudeKeepsItsOriginAndHistoryAcrossArchiveAndResume() async throws {
+    @Test func claudeRunsAsYabAndKeepsItsHistoryAcrossArchiveAndResume() async throws {
         try #require(Store.testing)
         let world = try claudeWorld()
         let agents = Agents()

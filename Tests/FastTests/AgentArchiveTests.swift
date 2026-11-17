@@ -3,28 +3,6 @@ import Testing
 @testable import Fast
 
 struct AgentArchiveTests {
-    @Test func claudeOriginCannotLeakFromItsCaller() {
-        let base = ["CLAUDE_CODE_ENTRYPOINT": "claude-desktop", "CLAUDE_CONFIG_DIR": "/test/account",
-                    "CLAUDE_SECURESTORAGE_CONFIG_DIR": "", "HOME": "/test/user", "PATH": "/test/bin"]
-        var expected = base
-        expected["CLAUDE_CODE_ENTRYPOINT"] = "yab"
-        #expect(AgentArchive.environment(cli: "claude", base: base) == expected)
-        #expect(AgentArchive.environment(cli: "codex", base: base) == base)
-        #expect(AgentArchive.environment(cli: "external", base: base) == base)
-        #expect(AgentArchive.environment(cli: "claude", base: [:]) == ["CLAUDE_CODE_ENTRYPOINT": "yab"])
-    }
-
-    /// A chat and background work both run as yab, the account's client
-    /// name, even when Yab was opened with Claude Desktop's origin.
-    @MainActor @Test func everyClaudeRunNamesYabOverAnInheritedOrigin() {
-        for origin in ["claude-desktop", "cli"] {
-            let account = PlanAccounts.environment(PlanAccount(id: "claude", cli: "claude"),
-                                                   base: ["CLAUDE_CODE_ENTRYPOINT": origin, "PATH": "/test/bin"], secret: nil)
-            #expect(account["CLAUDE_CODE_ENTRYPOINT"] == "yab")
-            #expect(AgentArchive.environment(cli: "claude", base: account)["CLAUDE_CODE_ENTRYPOINT"] == "yab")
-        }
-    }
-
     private static func world() throws -> URL {
         let user = FileManager.default.temporaryDirectory.appendingPathComponent("agent-archive-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: user, withIntermediateDirectories: true)

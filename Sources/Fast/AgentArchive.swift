@@ -4,17 +4,6 @@ import Foundation
 /// created. Call only after its answer has been delivered and its process
 /// has exited; this never discovers or archives unrelated conversations.
 enum AgentArchive {
-    /// Desktop discovers CLI transcripts by their first entrypoint, and
-    /// takes one marked claude-desktop for its own. A caller can set that
-    /// origin, so every Claude run names Yab again here, as every Claude
-    /// account does (PlanAccounts.entrypoint), whatever it was handed.
-    static func environment(cli: String, base: [String: String]) -> [String: String] {
-        guard cli == "claude" else { return base }
-        var env = base
-        env["CLAUDE_CODE_ENTRYPOINT"] = PlanAccounts.entrypoint
-        return env
-    }
-
     /// Claude's Desktop record may not exist for a CLI conversation. In
     /// that case leave the transcript and the app's records alone. Existing
     /// records are matched by the CLI's id, never by their title or folder.
