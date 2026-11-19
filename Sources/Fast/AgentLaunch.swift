@@ -50,7 +50,8 @@ struct AgentLaunch: Equatable {
 
     /// The environment a Claude Code process starts in names Yab, over
     /// whatever was handed down: Claude Desktop takes a transcript marked
-    /// claude-desktop for its own. Other CLIs are left as they are.
+    /// claude-desktop for its own. Other CLIs are left as they are. A
+    /// background run then goes back to sdk-cli (AgentArchive.environment).
     static func named(_ cli: String, _ env: [String: String]) -> [String: String] {
         guard cli == "claude" else { return env }
         var env = env

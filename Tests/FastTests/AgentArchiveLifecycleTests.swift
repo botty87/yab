@@ -264,7 +264,7 @@ struct AgentArchiveLifecycleTests {
         }
     }
 
-    @Test func claudeRunsAsYabAndKeepsItsHistoryAcrossArchiveAndResume() async throws {
+    @Test func backgroundClaudeKeepsItsSDKOriginAndHistoryAcrossArchiveAndResume() async throws {
         try #require(Store.testing)
         let world = try claudeWorld()
         let agents = Agents()
@@ -283,7 +283,7 @@ struct AgentArchiveLifecycleTests {
                     "ANTHROPIC_API_KEY": "fixture-key-is-not-a-credential", "CLAUDE_CODE_OAUTH_TOKEN_FILE": token.path,
                     "ARCHIVE_LOG": world.log.path, "ARCHIVE_THREAD": thread, "ARCHIVE_TRANSCRIPT": transcript.path]
         var expected = base
-        expected["CLAUDE_CODE_ENTRYPOINT"] = "yab"
+        expected["CLAUDE_CODE_ENTRYPOINT"] = "sdk-cli"
         // The launch puts the selected CLI's folder first on PATH (AgentCopies.environment).
         expected = AgentCopies.environment(for: world.binary.path, base: expected)
         let record = Store.file("provider-user/Library/Application Support/Claude/claude-code-sessions/fixture/local_" + thread + ".json")
@@ -351,12 +351,12 @@ struct AgentArchiveLifecycleTests {
             try JSONSerialization.jsonObject(with: Data($0.utf8)) as! [String: Any]
         }
         #expect(rows.map { $0["text"] as? String } == ["First", "Answer: First", "Follow-up", "Answer: Follow-up"])
-        #expect(rows.allSatisfy { $0["sessionId"] as? String == thread && $0["entrypoint"] as? String == "yab" })
+        #expect(rows.allSatisfy { $0["sessionId"] as? String == thread && $0["entrypoint"] as? String == "sdk-cli" })
         let launches = world.messages().filter { $0["event"] as? String == "launch" }
         #expect(launches.count == 2)
         #expect(launches.first?["resume"] is NSNull)
         #expect(launches.last?["resume"] as? String == thread)
-        #expect(launches.allSatisfy { ($0["env"] as? [String: String])?["CLAUDE_CODE_ENTRYPOINT"] == "yab" })
+        #expect(launches.allSatisfy { ($0["env"] as? [String: String])?["CLAUDE_CODE_ENTRYPOINT"] == "sdk-cli" })
 
         // Exercise the same launch path for a user's ordinary chat.
         ordinary.textOnly = true
@@ -373,6 +373,7 @@ struct AgentArchiveLifecycleTests {
         }
         try #require(ordinaryFinished)
         #expect(ordinary.archiveTask == nil)
+        // Handed claude-desktop, the ordinary chat names Yab instead.
         #expect(ordinary.providerEnvironment == AgentCopies.environment(for: world.binary.path,
                                                                           base: ordinary.env.merging(["CLAUDE_CODE_ENTRYPOINT": "yab"]) { $1 }))
         #expect((world.messages().last { $0["event"] as? String == "launch" }?["env"] as? [String: String])?["CLAUDE_CODE_ENTRYPOINT"] == "yab")

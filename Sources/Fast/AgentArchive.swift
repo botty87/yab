@@ -4,6 +4,16 @@ import Foundation
 /// created. Call only after its answer has been delivered and its process
 /// has exited; this never discovers or archives unrelated conversations.
 enum AgentArchive {
+    /// Desktop discovers CLI transcripts by their first entrypoint. A print
+    /// run normally records sdk-cli, but inherits a Desktop/IDE origin if
+    /// its caller set one. Background work must retain its actual SDK origin.
+    static func environment(cli: String, background: Bool, base: [String: String]) -> [String: String] {
+        guard cli == "claude", background else { return base }
+        var env = base
+        env["CLAUDE_CODE_ENTRYPOINT"] = "sdk-cli"
+        return env
+    }
+
     /// Claude's Desktop record may not exist for a CLI conversation. In
     /// that case leave the transcript and the app's records alone. Existing
     /// records are matched by the CLI's id, never by their title or folder.

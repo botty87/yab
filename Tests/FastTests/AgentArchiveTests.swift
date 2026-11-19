@@ -3,6 +3,23 @@ import Testing
 @testable import Fast
 
 struct AgentArchiveTests {
+    @Test func backgroundClaudeOriginCannotLeakFromItsCaller() {
+        let base = ["CLAUDE_CODE_ENTRYPOINT": "claude-desktop", "CLAUDE_CONFIG_DIR": "/test/account",
+                    "CLAUDE_SECURESTORAGE_CONFIG_DIR": "", "HOME": "/test/user", "PATH": "/test/bin"]
+        let background = AgentArchive.environment(cli: "claude", background: true, base: base)
+        var expected = base
+        expected["CLAUDE_CODE_ENTRYPOINT"] = "sdk-cli"
+        #expect(background == expected)
+        #expect(AgentArchive.environment(cli: "claude", background: false, base: base) == base)
+        #expect(AgentArchive.environment(cli: "codex", background: true, base: base) == base)
+        #expect(AgentArchive.environment(cli: "external", background: true, base: base) == base)
+        #expect(AgentArchive.environment(cli: "claude", background: true, base: [:]) == ["CLAUDE_CODE_ENTRYPOINT": "sdk-cli"])
+        // A launch names Yab first; a background run still keeps sdk-cli.
+        let named = AgentLaunch.named("claude", base)
+        #expect(AgentArchive.environment(cli: "claude", background: true, base: named) == expected)
+        #expect(AgentArchive.environment(cli: "claude", background: false, base: named)["CLAUDE_CODE_ENTRYPOINT"] == "yab")
+    }
+
     private static func world() throws -> URL {
         let user = FileManager.default.temporaryDirectory.appendingPathComponent("agent-archive-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: user, withIntermediateDirectories: true)
