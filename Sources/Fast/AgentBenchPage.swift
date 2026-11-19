@@ -173,6 +173,9 @@ extension Bench {
         }
         guard let tab = own() else { return }
         let action = request["action"] as? String ?? "click"
+        // The step that finishes a click in script: only the click itself
+        // runs it, after its own approval.
+        if action == "script" { answer(["error": "no action " + action]); return }
         let ref = request["ref"] as? String ?? ""
         let zoom = tab.page.pageZoom * tab.page.magnification
         if AgentPage.asked[ObjectIdentifier(tab)] != nil {
