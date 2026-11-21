@@ -167,10 +167,80 @@ struct AgentSecretsExtensionFrameTests {
             try await world.web.call(AgentPage.landing, arguments: ["ref": "e1", "k": -1, "x": 50.0, "y": 50.0], in: .agent) as? Bool
         }
         // The top page sees the extension's window there: no real click.
+        #expect(await AgentSecrets.extensionFrameOpen(world.web) == true)
         #expect(try await lands() == false)
         // Once the window closes, the point lands on the page's frame again.
         _ = try await world.web.call("document.getElementById('vault').remove(); return true;", in: .agent)
         try #require(await Self.closed(world.web))
+        #expect(await AgentSecrets.extensionFrameOpen(world.web) == false)
         #expect(try await lands() == true)
+    }
+
+    /// The same frame and button with something of the page's own over it
+    /// (a banner), and no extension's window: the real click of before.
+    @Test func aCoveredClickByRefWithNoExtensionFrameStaysReal() async throws {
+        _ = NSApplication.shared
+        let tab = Tab(bench: true, engine: .webKit)
+        defer { tab.close() }
+        let web = try #require(tab.page.webKit)
+        web.frame = NSRect(x: 0, y: 0, width: 600, height: 400)
+        web.loadHTMLString("""
+        <iframe id=inner style="position:absolute;left:0;top:0;width:300px;height:200px;border:0"
+          srcdoc="<style>body{margin:0}</style><button id=pay style='width:200px;height:100px'>Pay</button>"></iframe>
+        <div id=banner style="position:absolute;left:0;top:0;width:400px;height:300px;z-index:2"></div>
+        """, baseURL: URL(string: "https://example.test/login"))
+        var held: Bool?
+        for _ in 0..<200 where held != true {
+            held = try? await web.call("""
+            const inner = document.getElementById('inner');
+            const pay = inner && inner.contentDocument && inner.contentDocument.getElementById('pay');
+            if (!pay) return false;
+            globalThis.__yab ||= {};
+            globalThis.__yab.refs = new Map([['e1', pay]]);
+            return pay.ownerDocument.elementFromPoint(50, 50) === pay;
+            """, in: .agent) as? Bool
+            if held != true { try await Task.sleep(for: .milliseconds(25)) }
+        }
+        try #require(held == true, "In its own frame the button looks uncovered")
+        // The top page's own test sees the banner: without the gate this
+        // would be a click by script.
+        let covered = try await web.call(AgentPage.landing, arguments: ["ref": "e1", "k": -1, "x": 50.0, "y": 50.0], in: .agent) as? Bool
+        try #require(covered == false, "The banner covers the frame from the top page")
+        #expect(await AgentSecrets.extensionFrameOpen(tab.page) == false)
+        let landing = await withCheckedContinuation { go in
+            AgentPage.lands(tab, ref: "e1", at: CGPoint(x: 50, y: 50)) { go.resume(returning: $0) }
+        }
+        guard case .clear = landing else { Issue.record("expected a real click, got \(landing)"); return }
+    }
+
+    /// A ref taken while the extension's window is open, used after it
+    /// closes and after a navigation that opens it again.
+    @Test func aRefTakenWithTheExtensionFrameOpenGoesStaleAcrossANavigation() async throws {
+        let world = try await Self.world()
+        defer { world.close() }
+        await Self.load(world)
+        _ = try #require(await Self.vault(world.web))
+        _ = try await world.web.call("""
+        globalThis.__yab ||= {};
+        globalThis.__yab.refs = new Map([['e1', document.getElementById('go')]]);
+        return true;
+        """, in: .agent)
+        func click() async throws -> [String: Any]? {
+            try await world.web.call(AgentPage.act, arguments: ["action": "click", "ref": "e1", "text": "", "value": "", "dy": 0], in: .agent) as? [String: Any]
+        }
+        // The window closes: the same ref still names the page's button.
+        _ = try await world.web.call("document.getElementById('vault').remove(); return true;", in: .agent)
+        try #require(await Self.closed(world.web))
+        let after = try #require(try await click())
+        #expect(after["error"] == nil && after["x"] != nil, "\(after)")
+        #expect(await AgentSecrets.extensionFrameOpen(world.web) == false)
+        // A navigation opens it again: the ref is stale, nothing is pressed,
+        // and the answer carries none of the window's words.
+        await Self.load(world)
+        _ = try #require(await Self.vault(world.web))
+        let stale = try #require(try await click())
+        #expect(stale["error"] as? String == "stale ref e1, take a new snapshot")
+        #expect(!"\(stale)".contains(Self.secret))
+        #expect(await AgentSecrets.extensionFrameOpen(world.web) == true)
     }
 }

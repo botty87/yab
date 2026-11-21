@@ -200,9 +200,7 @@ enum AgentSecrets {
             return nil
         }
         guard let chromium = page as? ChromiumPage else {
-            let frames = await withCheckedContinuation { continuation in
-                page.childFrames { continuation.resume(returning: $0) }
-            }
+            let frames = (try? await frames(of: page)) ?? []
             if reach == .sight, frames.contains(where: walledOff) { return refuse("extension frame", "extension frame") }
             for frame in [nil] + frames.filter({ !walledOff($0) }).map({ Optional($0) }) {
                 if let reason = await probe(frame) { return refuse(reason, reason) }
@@ -214,7 +212,7 @@ enum AgentSecrets {
         var checked = Set<String>()
         for pass in 0..<3 {
             let frames: [PageFrame]
-            do { frames = try await chromium.agentFrames() } catch {
+            do { frames = try await Self.frames(of: chromium) } catch {
                 skipped("frame inventory: \(error)")
                 if pass == 0, let reason = await probe(nil) { return refuse(reason, reason) }
                 return true
@@ -242,6 +240,23 @@ enum AgentSecrets {
             }
         }
         return true
+    }
+
+    /// The page's frames as the guard sees them: a WebKit page's child
+    /// frames, or every attached Chromium renderer with its authenticated
+    /// origin (which throws rather than give a partial list).
+    static func frames(of page: any PageHandle) async throws -> [PageFrame] {
+        if let chromium = page as? ChromiumPage { return try await chromium.agentFrames() }
+        return await withCheckedContinuation { continuation in
+            page.childFrames { continuation.resume(returning: $0) }
+        }
+    }
+
+    /// Whether an extension's own window is open on the page, by the same
+    /// test `check()` refuses sight with; nil when the frames can't be listed.
+    static func extensionFrameOpen(_ page: any PageHandle) async -> Bool? {
+        guard let frames = try? await frames(of: page) else { return nil }
+        return frames.contains { !$0.isMain && walledOff($0) }
     }
 
     /// Something the guard could not look at, for the helper's log.

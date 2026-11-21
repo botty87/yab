@@ -178,12 +178,40 @@ enum AgentPage {
     return !!(l && (l.control === want || l.contains(want)));
     """
 
+    /// How a real click by ref at its point would go.
+    enum Landing {
+        /// On the ref, or on the frame that holds it: the real click goes.
+        case clear
+        /// On something of the top page's over it: clicked by script instead.
+        case covered
+        /// The page asked something meanwhile, which holds its scripts: the
+        /// question is the answer, and nothing is clicked.
+        case asked([String: Any])
+    }
+
     /// Whether a real click by `ref` at `point`, in the top page's CSS
-    /// pixels, lands where it should; when that can't be told, it doesn't.
-    static func lands(_ tab: Tab, ref: String, at point: CGPoint, _ done: @escaping @MainActor (Bool) -> Void) {
-        let k = locate(tab, ref).marker ?? -1
-        run(tab, landing, ["ref": ref, "k": k, "x": Double(point.x), "y": Double(point.y)]) { result in
-            if case .success(let value) = result, let clear = value as? Bool { done(clear) } else { done(false) }
+    /// pixels, lands where it should. Only an extension's window can be
+    /// over it unseen, so with none open the real click goes as before,
+    /// with nothing asked of the page; when the frames can't be listed, or
+    /// the point can't be told, it doesn't land.
+    static func lands(_ tab: Tab, ref: String, at point: CGPoint, _ done: @escaping @MainActor (Landing) -> Void) {
+        var settled = false
+        @MainActor func finish(_ landing: Landing) { if !settled { settled = true; done(landing) } }
+        // Both steps call into the page, which a question (confirm) holds.
+        @MainActor func watch(_ n: Int) {
+            guard !settled else { return }
+            if let waiting = AgentSecrets.nativeQuestionReply([tab]) { finish(.asked(waiting)); return }
+            if let question = asked[ObjectIdentifier(tab)] { finish(.asked(["done": "mouse", "dialog": question.said])); return }
+            if n < 300 { DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { watch(n + 1) } }
+        }
+        watch(0)
+        Task { @MainActor in
+            if await AgentSecrets.extensionFrameOpen(tab.page) == false { finish(.clear); return }
+            guard !settled else { return }
+            let k = locate(tab, ref).marker ?? -1
+            run(tab, landing, ["ref": ref, "k": k, "x": Double(point.x), "y": Double(point.y)]) { result in
+                if case .success(let value) = result, value as? Bool == true { finish(.clear) } else { finish(.covered) }
+            }
         }
     }
 
@@ -894,8 +922,12 @@ enum AgentPage {
       return ref + ' is covered by “' + words + '”' + (named.length ? ': deal with it first (' + named.join(', ') + ')' : ': close it first');
     }
     function scriptClick() {
+      // A primary mouse button's press, as a person's is: some pages act
+      // only on that (a picker opened on pointerdown).
       for (const t of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
-        el.dispatchEvent(new (t.startsWith('pointer') ? PointerEvent : MouseEvent)(t, { bubbles: true, cancelable: true, composed: true, view: win }));
+        const down = t.endsWith('down');
+        el.dispatchEvent(new (t.startsWith('pointer') ? PointerEvent : MouseEvent)(t, { bubbles: true, cancelable: true, composed: true, view: win,
+          button: 0, buttons: down ? 1 : 0, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
       }
       if (el.focus) el.focus();
       el.click();
