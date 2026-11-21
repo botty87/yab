@@ -192,7 +192,7 @@ enum AgentPage {
     /// Whether a real click by `ref` at `point`, in the top page's CSS
     /// pixels, lands where it should. Only an extension's window can be
     /// over it unseen, so with none open the real click goes as before,
-    /// with nothing asked of the page; when the frames can't be listed, or
+    /// with no look at the top page; when the frames can't be listed, or
     /// the point can't be told, it doesn't land.
     static func lands(_ tab: Tab, ref: String, at point: CGPoint, _ done: @escaping @MainActor (Landing) -> Void) {
         var settled = false
@@ -201,7 +201,8 @@ enum AgentPage {
         @MainActor func watch(_ n: Int) {
             guard !settled else { return }
             if let waiting = AgentSecrets.nativeQuestionReply([tab]) { finish(.asked(waiting)); return }
-            if let question = asked[ObjectIdentifier(tab)] { finish(.asked(["done": "mouse", "dialog": question.said])); return }
+            // Nothing was clicked: the question as a read answers it.
+            if let question = asked[ObjectIdentifier(tab)] { finish(.asked(["dialog": question.said, "url": tab.address?.absoluteString ?? "", "title": tab.title])); return }
             if n < 300 { DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { watch(n + 1) } }
         }
         watch(0)
